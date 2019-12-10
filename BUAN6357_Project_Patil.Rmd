@@ -1,0 +1,256 @@
+---
+title: "Proj"
+author: "Sanjana"
+date: "November 20, 2019"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+
+##SUMMARY
+The goal of this project is to predict the number of comments a Facebook post will receive based on characteristics of the page and information about the post. This pursuit is of great potential value because the number of comments on a Facebook post can be used as a proxy for interest in the subject of the page and relevance of the post’s content. Thus this model to predict the number of Facebook comments based on page and post information, can help gain insight into the thoughts and feelings of people active on social media. This, in turn, be used by advertisers, marketers, as well scientists studying social media. 
+
+
+## Installing the required libraries 
+```{r}
+
+if(!require("knitr")) install.packages("knitr")
+if(!require("corrplot")) install.packages("corrplot")
+if(!require("caret")) install.packages("caret")
+if(!require("e1071")) install.packages("e1071")
+if(!require("ridge")) install.packages("ridge")
+if(!require("randomForest")) install.packages("randomForest")
+if(!require("createDataPartition")) install.packages("createDataPartition")
+library(caret)
+library(e1071)
+library(tidyverse)
+library(rmarkdown)
+library(corrplot)
+library(knitr)
+library(ridge)
+library(randomForest)
+library(createDataPartition)
+library(neuralnet)
+#Setting the Working directory.
+#getwd()
+#setwd('C:/BUAN 6357 - Advanced BA with R/Project')
+
+```
+
+##Importing the dataset
+```{r}
+commentdata<-read.csv("Dataset.csv")
+y<-read.csv("Test_Case_1.csv")
+```
+## DATA SET: 
+There are 23 feature and 1 target value for each post. The variables are split into different categories like Page Features, Essential Features, Weekday Features, and other Features. There is also 40,949 instances. 
+
+##EXPLORATORY DATA ANALYSIS: 
+```{r}
+dataset_category = commentdata %>%
+                    select(likes, Category) %>%
+                    group_by(likes)   
+head(dataset_category)
+summary(dataset_category$Category)
+
+CategoryDist  = ggplot(data = dataset_category) +
+                geom_bar(mapping = aes(x = Category, y = ..count.., fill = Category)) +
+                labs(title = 'Figure 1. Category of Page') + 
+                scale_fill_brewer(palette = 'PuBuGn')
+print(CategoryDist)
+
+
+
+##Figure 1.
+```
+To begin the exploration, we examine the category of the source of the document e.g. the place, brand, institution etc. There are total 106 categories. 
+The above figure (figure 1) shows the count of each category. Thus we can see which category has the most number of pages and in turn the most number of likes. 
+According to the graph below, we can see that the category number 9 has the most count and it happens to be the professional sports team page. 
+
+##Keeping the importatnt features 
+```{r}
+x<-commentdata[,c(1:11,13,14,16,17,19:21,23:26,28)]
+y<-y[,c(1:11,13,14,16,17,19:21,23:26)]
+```
+
+##Dealing with the null values in the dataset
+```{r}
+x_new<-x[apply(x[c(23)],1,function(z) !any(z==0)),] 
+x_new1<-na.omit(x_new)
+```
+
+##Splitting the dataset
+```{r}
+
+set.seed(123)
+trainindex <- createDataPartition(x_new1$likes, p =0.80, list = FALSE, times = 1 )
+x_train <- x_new1[trainindex,]
+x_test <- x_new1[-trainindex,]
+```
+
+##Correlation matrix
+```{r}
+
+trainInt <- x_train %>%
+    select(likes, Checkins,Returns,Category,commBase,comm24,comm48,comm24_1,diff2448,baseTime,length,hrs,sun_pub,tue_pub,wed_pub,fri_pub,sat_pub,sun_base,tue_base,wed_base,thu_base,fri_base,output)
+trainInt$likes <- as.integer(trainInt$likes)
+trainInt$Checkins <- as.integer(trainInt$Checkins)
+trainInt$Returns <- as.integer(trainInt$Returns)
+trainInt$Category <- as.integer(trainInt$Category)
+trainInt$commBase <- as.integer(trainInt$commBase)
+trainInt$comm24 <- as.integer(trainInt$comm24)
+trainInt$comm48 <- as.integer(trainInt$comm48)
+trainInt$comm24_1 <- as.integer(trainInt$comm24_1)
+trainInt$diff2448 <- as.integer(trainInt$diff2448)
+trainInt$baseTime <- as.integer(trainInt$baseTime)
+trainInt$length <- as.integer(trainInt$length)
+trainInt$hrs <- as.integer(trainInt$hrs)
+trainInt$sun_pub <- as.integer(trainInt$sun_pub)
+trainInt$tue_pub <- as.integer(trainInt$tue_pub)
+trainInt$wed_pub <- as.integer(trainInt$wed_pub)
+trainInt$fri_pub <- as.integer(trainInt$fri_pub)
+trainInt$sat_pub <- as.integer(trainInt$sat_pub)
+trainInt$sun_base <- as.integer(trainInt$sun_base)
+trainInt$tue_base <- as.integer(trainInt$tue_base)
+trainInt$wed_base <- as.integer(trainInt$wed_base)
+trainInt$fri_base <- as.integer(trainInt$Category)
+trainInt$Category <- as.integer(trainInt$Category)
+str(trainInt)
+```
+
+```{r}
+corMatrix <- as.data.frame(cor(trainInt))
+corMatrix$var1 = rownames(corMatrix)
+corMatrix %>%
+    gather(key = var2, value = r, 1:23) %>%
+        ggplot(aes(x = var1, y = var2, fill = r)) +
+        ggtitle("Figure 2. Correlation Matrix")+
+        geom_tile() +
+        geom_text(aes(label = round(r, 2)), size = 3)+
+        scale_fill_gradient2(low = '#00a6c8', high='#eb3300', mid = 'white') +
+        coord_equal()  +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+##Figure 2.
+
+```
+
+## Implementing different models
+### Model 1 : Linear Regression
+```{r}
+
+model.lin<-lm(output~Checkins+Returns+Category+commBase+comm24+comm48+comm24_1+baseTime+hrs,data=x_train)
+model.lin.predict<-predict(model.lin,x_train)
+
+```
+
+### Plotting the graph
+```{r}
+
+ggplot(x_train,aes(y=model.lin.predict,x=x_train$output)) +   geom_smooth(method = "glm") + geom_point() +   ggtitle("Figure 3. Observed VS Predicted Value for Linear Regression") + labs(x= "Observed Value", y="Predicted Value")
+##Figure 3.
+```
+
+### Calculating the R-square for linear reg
+```{r}
+
+sseTrain_lin <- sum((model.lin.predict - trainInt$output) ^ 2)
+sstTrain_lin <- sum((mean(x_train$output) - trainInt$output) ^ 2)
+print ("Model R2 for linear regression")
+modelR2Train <- 1 - sseTrain_lin/sstTrain_lin
+modelR2Train
+
+
+```
+Acoording to the  r-square value for this model and also according to the graph, this model cannot be considered for prediction.
+
+### Model 2 : Linear Ridge
+```{r}
+
+
+## Considering only the significant variables for fitting the model.
+model.lin.ridge<-linearRidge(output~likes+Checkins+Returns+Category+commBase+comm24+comm48+comm24_1+diff2448+baseTime+hrs,data=x_train)
+model.ridge.pred<-predict(model.lin.ridge,x_train)
+summary(model.lin.ridge)
+
+```
+
+### Plotting the graph
+```{r}
+
+ggplot(x_train,aes(y=model.ridge.pred,x=x_train$output)) +   geom_smooth(method = "glm") + geom_point() +   ggtitle("Figure 4. Observed VS Predicted Value for Ridge") + labs(x= "Observed Value", y="Predicted Value")
+##Figure 4.
+```
+
+### Calculating the R-square for Linear Ridge 
+```{r} 
+
+sseTrain <- sum((model.ridge.pred - trainInt$output) ^ 2)
+sstTrain <- sum((mean(x_train$output) - trainInt$output) ^ 2)
+print ("Model R2 for Linear Ridge")
+modelR2Train <- 1 - sseTrain/sstTrain
+modelR2Train
+
+
+```
+Again, according to the graph and the calculated r-square value, this model cannot be used for prediction.
+
+### Model 2 : Random Forest
+```{r}
+
+model.rf<-randomForest(output~.,data=x_train, importance=TRUE)
+summary(model.rf)
+model.rf.predict<-predict(model.rf,x_train)
+
+
+```
+
+### Calculating the R-square for Random Forest
+```{r}
+
+sseTrain_rf <- sum((model.rf.predict - trainInt$output) ^ 2)
+sstTrain_rf <- sum((mean(x_train$output) - trainInt$output) ^ 2)
+print ("Model R2 for Random Forest")
+modelR2Train <- 1 - sseTrain_rf/sstTrain_rf
+modelR2Train
+```
+
+### Plotting the graph
+```{r}
+
+ggplot(x_train,aes(y=model.rf.predict,x=x_train$output)) +   geom_smooth(method = "glm") + geom_point() +   ggtitle("Figure 5. Observed VS Predicted Value for Random Forest") + labs(x= "Observed Value", y="Predicted Value")
+##Figure 5.
+```
+
+### Neural Network
+```{r}
+
+model_NN1 <- neuralnet(output ~ ., data = x_train)
+plot(model_NN1, rep = 'best')
+nn.predict<-predict(model_NN1,x_train)
+```
+
+```{r}
+set.seed(123)
+Yacht_NN2 <- neuralnet(output ~ ., 
+                       data = x__Train, 
+                       hidden = c(4, 1), 
+                       act.fct = "logistic")
+plot(model_NN1, rep = 'best')
+```
+
+Comparing all the models, it can be said that the Random Forest model is the best suited model for this dataset.
+The test dataset consists of 100 observations i.e 100 posts with different features. The goal is to predict the number of comments for these posts will receive.
+Using the Random Forest Regression model to predict the output variable for the test dataset we get the following
+```{r}
+
+rf.predict.test<-predict(model.rf,y)
+rf.predict.test
+```
+
+## Conclusion
+The most important findings of are that the comment volume of a Facebook post can be predicted most accurately by the historical comment volume of the Facebook page and the number of Facebook post shares. It appears that user controllable features such as character length and day of posting have relatively little impact on the comment volume, as we were not able to increase the accuracy of the single feature baseline by adding those input attributes.
+The number of posts on that page in the preceding 24 hours and the number of post shares largely predicts the amount of comments a post will receive. 
+
+
