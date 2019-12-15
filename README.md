@@ -6,6 +6,7 @@
 ## EDA
 #### To begin the exploration, we examine the category of the source of the document e.g. the place, brand, institution etc. There are total 106 categories. The above ﬁgure (ﬁgure 1) shows the count of each category. Thus we can see which category has the most number of pages and in turn the most number of likes. According to the graph below, we can see that the category number 9 has the most count and it happens to be the professional sports team page
 
+
 ## IMPLIMENTING DIFFERENT MODELS 
 ### Model 1 : Linear Regression
 #### Acoording to the r-square value for this model and also according to the graph, this model cannot be considered for prediction. The value is too small.
