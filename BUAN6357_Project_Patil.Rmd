@@ -1,7 +1,7 @@
 ---
 title: "Proj"
-author: "Sanjana"
-date: "November 20, 2019"
+author: "Rebecca"
+date: "2019"
 output:
   pdf_document: default
   word_document: default
